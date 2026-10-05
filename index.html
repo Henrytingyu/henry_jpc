@@ -367,7 +367,12 @@
             
             <section id="sec-meas-matrix" class="test-only">
                 <h2 class="section-header">TX / RX Data Matrix (Optional) <button type="button" class="btn btn-outline" onclick="addMatrixRow()">Add Row</button></h2>
-                <p style="font-size:0.875rem; color:var(--text-muted); margin-top:-16px;"><strong>⚡ Smart Paste Enabled:</strong> Copy from Excel, click the first cell, and press <strong>Ctrl+V</strong>.</p>
+                              <p style="font-size:0.875rem; color:var(--text-muted); margin-top:-16px;">
+    <strong>⚡ Smart Paste Enabled:</strong>
+    Copy one or multiple rows from Excel, click the starting cell,
+    then press <strong>Ctrl+V</strong>.
+    Data fills right and downward; missing rows are added automatically.
+</p>
                 <div style="overflow-x: auto;">
                     <table class="spec-table" style="min-width: 700px;">
                         <thead><tr><th>Item / Freq</th><th>Limit</th><th>LANE 1</th><th>LANE 2</th><th>LANE 3</th><th>LANE 4</th><th>LANE 5</th><th>LANE 6</th><th>LANE 7</th><th>LANE 8</th><th>Result</th><th style="width: 40px;"></th></tr></thead>
@@ -578,7 +583,170 @@
                 <td><input type="text" class="save-t-mat" value="${c8}" style="width:50px"></td>
                 <td style="width:75px;"><select class="save-t-mat"><option value="">-</option><option value="Pass" ${r==='Pass'?'selected':''}>Pass</option><option value="Fail" ${r==='Fail'?'selected':''}>Fail</option><option value="REF" ${r==='REF'?'selected':''}>REF</option></select></td>`);
         }
+// ===== TX / RX Data Matrix：支援 Excel 單行／多行貼上 =====
+// 欄位順序：Item/Freq、Limit、LANE 1-8、Result，共 11 欄。
 
+function setMatrixCellValue(control, rawValue) {
+    const value = String(rawValue ?? '').trim();
+
+    // Result 欄位是 select，需要把 Excel 文字轉成選項值
+    if (control.tagName === 'SELECT') {
+        const normalized = value.toLowerCase();
+
+        const allowedValues = {
+            '': '',
+            '-': '',
+            'pass': 'Pass',
+            'fail': 'Fail',
+            'ref': 'REF'
+        };
+
+        control.value = Object.prototype.hasOwnProperty.call(
+            allowedValues,
+            normalized
+        )
+            ? allowedValues[normalized]
+            : '';
+    } else {
+        control.value = value;
+    }
+}
+
+
+/**
+ * 確保指定資料列存在。
+ * 若 Excel 貼上的資料超過目前列數，會自動新增列。
+ */
+function ensureMatrixRow(rowIndex) {
+    const tbody = document.getElementById('matrixTableBody');
+
+    while (tbody.rows.length <= rowIndex) {
+        addMatrixRow();
+    }
+
+    return tbody.rows[rowIndex];
+}
+
+
+/**
+ * TX / RX Data Matrix Excel 智慧貼上
+ *
+ * Excel 欄位以 Tab 分隔
+ * Excel 資料列以換行符號分隔
+ */
+document
+    .getElementById('matrixTableBody')
+    .addEventListener('paste', function (event) {
+        // 必須在 Data Matrix 的欄位中貼上才處理
+        const startControl = event.target.closest('.save-t-mat');
+
+        if (!startControl) {
+            return;
+        }
+
+        const clipboardText =
+            event.clipboardData?.getData('text/plain');
+
+        if (!clipboardText) {
+            return;
+        }
+
+        /*
+         * 如果只是單一純文字，不攔截瀏覽器原本的貼上行為。
+         * 只有包含 Tab 或換行符號時，才判定為 Excel 範圍。
+         */
+        const isExcelRange = /[\t\r\n]/.test(clipboardText);
+
+        if (!isExcelRange) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startRowElement = startControl.closest('tr');
+
+        // 取得目前點選的起始列
+        const startRow = Array
+            .from(this.rows)
+            .indexOf(startRowElement);
+
+        // 取得目前列的 11 個可編輯欄位
+        const startControls = Array.from(
+            startRowElement.querySelectorAll('.save-t-mat')
+        );
+
+        // 取得目前點選的起始欄
+        const startCol =
+            startControls.indexOf(startControl);
+
+        /*
+         * 統一 Windows、macOS 與 Linux 的換行格式，
+         * 並移除 Excel 複製時最後多出來的換行。
+         */
+        const pastedRows = clipboardText
+            .replace(/\r\n?/g, '\n')
+            .replace(/\n+$/, '')
+            .split('\n');
+
+        let writtenCells = 0;
+        let lastRow = startRow;
+        let lastCol = startCol;
+
+        pastedRows.forEach((rowText, rowOffset) => {
+            // Excel 欄位之間使用 Tab 分隔
+            const values = rowText.split('\t');
+
+            // 若目標資料列不存在，自動建立
+            const row =
+                ensureMatrixRow(startRow + rowOffset);
+
+            const controls = Array.from(
+                row.querySelectorAll('.save-t-mat')
+            );
+
+            values.forEach((value, colOffset) => {
+                const targetCol =
+                    startCol + colOffset;
+
+                /*
+                 * 超過 11 個資料欄位時停止寫入，
+                 * 避免寫入最右側的刪除按鈕欄。
+                 */
+                if (targetCol >= controls.length) {
+                    return;
+                }
+
+                setMatrixCellValue(
+                    controls[targetCol],
+                    value
+                );
+
+                writtenCells++;
+                lastRow = startRow + rowOffset;
+                lastCol = Math.max(
+                    lastCol,
+                    targetCol
+                );
+            });
+        });
+
+        // 貼上完成後立即儲存
+        saveDraft();
+
+        // 顯示實際寫入範圍
+        showToast(
+            `Excel paste completed: rows ${
+                startRow + 1
+            }-${
+                lastRow + 1
+            }, columns ${
+                startCol + 1
+            }-${
+                lastCol + 1
+            } (${writtenCells} cells)`
+        );
+    });
         function initDefaultRows() {
             if(document.getElementById('specTableBody').children.length === 0) { 
                 addRow("IL"); addRow("RL"); addRow("NEXT"); addRow("FEXT"); 
