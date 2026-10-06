@@ -1156,7 +1156,7 @@ initMatrixPaste('matrixTableBody2', 'save-t-mat2', addMatrixRow2);
                                                 if (cls === 'save-t-dut' && (index === 0 || index === 2)) {
                                                         html += `<td style="background-color: #f6f5f4; font-weight: 700;">${tdContent}</td>`;
                                                 } else {
-                                                        html += `<td>${tdContent}</td>`;
+                                                        html += ((cls === 'save-t-mat' || cls === 'save-t-mat2') && index === 0) ? `<td style="white-space:nowrap; word-break:keep-all; min-width:6ch;">${tdContent}</td>` : `<td>${tdContent}</td>`;
                                                 }
                                         });
                                         html += '</tr>';
@@ -1457,7 +1457,7 @@ initMatrixPaste('matrixTableBody2', 'save-t-mat2', addMatrixRow2);
                                 }
                                 
                                 if (matrixHtml || matrixHtml2) {
-                                        const matHead = (start) => '<thead><tr><th>Item / Freq</th><th>Limit</th>' + Array.from({length: 8}, (_, i) => `<th>TX/RX ${start + i}</th>`).join('') + '<th>Result</th></tr></thead>';
+                                        const matHead = (start) => '<thead><tr><th style="white-space:nowrap; word-break:keep-all; min-width:6ch;">Item / Freq</th><th>Limit</th>' + Array.from({length: 8}, (_, i) => `<th>LANE ${start + i}</th>`).join('') + '<th>Result</th></tr></thead>';
                                         let matTables = '';
                                         if (matrixHtml) {
                                                 matTables += `<div style="overflow-x:auto;">
