@@ -1233,6 +1233,9 @@ initMatrixPaste('matrixTableBody2', 'save-t-mat2', addMatrixRow2);
                         .rpt-chart-desc { margin-top: 16px; padding: 16px 20px; background: #f8f9fa; border-radius: 8px; font-size: 0.9rem; color: #555; line-height: 1.6; border-left: 3px solid #ccc; }
                         
                         .page-break { page-break-before: always; break-before: page; }
+                        /* Charts & Data：標題與 Figure 1 同頁，僅間隔一列 */
+                        .rpt-section-charts > .rpt-title { margin-bottom: 1.65rem; }
+                        .rpt-section-charts .rpt-charts-container > .rpt-chart-wrapper:first-child { page-break-before: auto; break-before: auto; min-height: 0; justify-content: flex-start; }
                         
                         @media screen { 
                                 .print-fixed-header, .print-fixed-footer { display: none; } 
@@ -1478,7 +1481,7 @@ initMatrixPaste('matrixTableBody2', 'save-t-mat2', addMatrixRow2);
                         }
 
                         if (chartsHTML) {
-                                outHtml += `<div class="page-break"></div><div class="rpt-section"><div class="rpt-title">${secIndex++}. ${isSim ? 'Simulation Results' : 'Charts & Data'}</div>${chartsHTML}</div>`;
+                                outHtml += `<div class="page-break"></div><div class="rpt-section rpt-section-charts"><div class="rpt-title">${secIndex++}. ${isSim ? 'Simulation Results' : 'Charts & Data'}</div>${chartsHTML}</div>`;
                         }
                         
                         outHtml += `</div></td></tr></tbody></table>`; // ✨ 隱形表格結界結束
